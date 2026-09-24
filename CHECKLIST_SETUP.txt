@@ -1,0 +1,16 @@
+DokuLap Complete v1 - Checklist
+[ ] Buat Google Spreadsheet
+[ ] Buka Extensions > Apps Script
+[ ] Copy backend/Code.gs
+[ ] Run setupDokuLap()
+[ ] Ganti password
+[ ] Deploy Web App (Execute as Me, Anyone)
+[ ] Copy URL /exec
+[ ] Paste URL ke assets/js/api.js
+[ ] Test URL /exec
+[ ] Test login
+[ ] Test buat kegiatan
+[ ] Cek folder DOKULAP di Drive
+[ ] Test upload foto <= 8 MB
+[ ] Cek sheet DOKUMENTASI
+[ ] Upload frontend ke GitHub Pages

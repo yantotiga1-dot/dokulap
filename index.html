@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DokuLap — Login</title>
+<link rel="stylesheet" href="assets/css/design-system.css"><link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body class="auth-page">
+<main class="auth-card">
+  <div class="brand-mark">DL</div>
+  <h1>DokuLap</h1>
+  <p class="muted">Dokumentasi Lapangan</p>
+  <form id="loginForm" class="form-grid">
+    <label>Username<input id="username" type="text" autocomplete="username" required placeholder="username"></label>
+    <label>Password<input id="password" type="password" autocomplete="current-password" required placeholder="••••••••••"></label>
+    <button class="btn btn-primary" type="submit">Masuk</button>
+  </form>
+  <div id="loginStatus" class="muted" style="margin-top:14px"></div>
+  <div style="margin-top:20px;font-size:12px" class="muted">DokuLap Backend v1 • Google Apps Script + Drive + Sheets</div>
+</main>
+<script src="assets/js/api.js"></script>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const status=document.getElementById('loginStatus');
+  status.textContent='Menghubungkan ke backend...';
+  try{
+    await DokuAPI.login(document.getElementById('username').value,document.getElementById('password').value);
+    status.textContent='Login berhasil. Membuka dashboard...';
+    location.href='dashboard.html';
+  }catch(err){ status.textContent='Login gagal: '+err.message; }
+});
+</script>
+</body>
+</html>
