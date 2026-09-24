@@ -1,5 +1,5 @@
 /* DokuLap Backend API client */
-const DOKULAP_API_URL = localStorage.getItem('dokulap-api-url') || 'https://script.google.com/macros/s/AKfycbzF25et5u1Dyu67A0lFhkM53SDh4VU2_ghCToDKcvhe_2iqiqmYspkg_7eeBJ_FRMBIbw/exec';
+const DOKULAP_API_URL = localStorage.getItem('dokulap-api-url') || 'PASTE_APPS_SCRIPT_WEB_APP_URL_HERE';
 
 const DokuAPI = {
   isConfigured() {
@@ -9,13 +9,25 @@ const DokuAPI = {
   async call(action, payload = {}) {
     if (!this.isConfigured()) throw new Error('URL Backend DokuLap belum dikonfigurasi.');
     const body = JSON.stringify({ action, ...payload });
-    const res = await fetch(DOKULAP_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.message || data.error || 'API error');
+    let res;
+    try {
+      res = await fetch(DOKULAP_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body
+      });
+    } catch (err) {
+      throw new Error('Gagal menghubungi backend untuk aksi '+action+': '+(err.message || err));
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (err) {
+      throw new Error('Backend menerima aksi '+action+', tetapi respons JSON tidak dapat dibaca. HTTP '+res.status);
+    }
+
+    if (!data.ok) throw new Error((data.error ? data.error+': ' : '') + (data.message || 'API error'));
     return data;
   },
 

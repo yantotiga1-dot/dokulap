@@ -49,13 +49,18 @@ async function refresh(){
    `<div class="activity-title">${active.nama_kegiatan}</div><div class="activity-meta">🏫 ${active.lokasi||active.sekolah_id||'-'} · ${active.tanggal_mulai}</div><div class="muted">ID: ${active.kegiatan_id}</div><div class="form-row" style="margin-top:15px"><button class="btn btn-secondary" onclick="completeActiveActivity()">Selesaikan</button></div>`:
    `<div class="muted">Belum ada kegiatan aktif. Buat kegiatan di atas.</div>`;
   document.getElementById('activityTable').innerHTML=`<table class="table"><thead><tr><th>Kegiatan</th><th>Tanggal</th><th>Status</th></tr></thead><tbody>${list.map(k=>`<tr><td><b>${k.nama_kegiatan}</b><br><small class="muted">${k.kegiatan_id}</small></td><td>${k.tanggal_mulai||''}</td><td><span class="badge ${k.status==='Aktif'?'badge-success':'badge-gray'}">${k.status}</span></td></tr>`).join('')}</tbody></table>`;
- }catch(e){ document.getElementById('activeActivity').innerHTML='<div class="muted">Backend belum tersambung: '+e.message+'</div>'; }
+ }catch(e){ console.error('DokuLap refresh gagal:', e); document.getElementById('activeActivity').innerHTML='<div class="muted">Data kegiatan tersimpan, tetapi daftar gagal dimuat: '+e.message+'</div>'; throw e; }
 }
 document.getElementById('saveActivity').onclick=async()=>{
  const btn=document.getElementById('saveActivity'); btn.disabled=true; btn.textContent='Menyimpan...';
  try{
   const r=await DokuAPI.createActivity({nama_kegiatan:document.getElementById('kNama').value,jenis_kegiatan:document.getElementById('kJenis').value,sekolah_nama:document.getElementById('kSekolah').value,tanggal_mulai:document.getElementById('kTanggal').value,lokasi:document.getElementById('kLokasi').value,deskripsi:document.getElementById('kDeskripsi').value});
-  activeId=r.activity.kegiatan_id; localStorage.setItem('dokulap-active-activity',activeId); DokuLap.showToast('Kegiatan aktif dibuat','success'); await refresh();
+  activeId=r.activity.kegiatan_id; localStorage.setItem('dokulap-active-activity',activeId); DokuLap.showToast('Kegiatan aktif dibuat','success'); try{
+  await refresh();
+}catch(refreshError){
+  console.warn('Kegiatan berhasil dibuat, tetapi refresh daftar gagal:', refreshError);
+  DokuLap.showToast('Kegiatan sudah tersimpan. Daftar belum diperbarui otomatis. Muat ulang halaman jika perlu.','warning');
+}
  }catch(e){DokuLap.showToast(e.message,'error')} finally{btn.disabled=false;btn.textContent='Simpan & Mulai Kegiatan';}
 };
 document.getElementById('uploadBtn').onclick=async()=>{
