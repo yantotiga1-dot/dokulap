@@ -1,5 +1,5 @@
 /* DokuLap Backend API client */
-const DOKULAP_API_URL = localStorage.getItem('dokulap-api-url') || 'PASTE_APPS_SCRIPT_WEB_APP_URL_HERE';
+const DOKULAP_API_URL = localStorage.getItem('dokulap-api-url') || 'https://script.google.com/macros/s/AKfycbzF25et5u1Dyu67A0lFhkM53SDh4VU2_ghCToDKcvhe_2iqiqmYspkg_7eeBJ_FRMBIbw/exec';
 
 const DokuAPI = {
   isConfigured() {
