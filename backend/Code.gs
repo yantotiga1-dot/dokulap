@@ -14,7 +14,7 @@
 
 const DL = {
   APP: 'DokuLap',
-  VERSION: '1.0.0',
+  VERSION: '2.0.0',
   ROOT_FOLDER: 'DOKULAP',
   MAX_FILE_BYTES: 8 * 1024 * 1024, // v1 safe default for Base64 uploads
   TOKEN_TTL_SECONDS: 21600,
@@ -44,6 +44,10 @@ function doPost(e) {
     else if (action === 'completeActivity') result = protectedAction_(body, completeActivity_);
     else if (action === 'listActivities') result = protectedAction_(body, listActivities_);
     else if (action === 'listDocuments') result = protectedAction_(body, listDocuments_);
+    else if (action === 'listSchools') result = protectedAction_(body, listSchools_);
+    else if (action === 'createSchool') result = protectedAction_(body, createSchool_);
+    else if (action === 'updateSchool') result = protectedAction_(body, updateSchool_);
+    else if (action === 'deleteSchool') result = protectedAction_(body, deleteSchool_);
     else if (action === 'uploadFile') result = protectedAction_(body, uploadFile_);
     else if (action === 'deleteDocument') result = protectedAction_(body, deleteDocument_);
     else if (action === 'health') result = { ok: true, app: DL.APP, version: DL.VERSION };
@@ -220,6 +224,72 @@ function activityById_(id) {
   const sh = getSS_().getSheetByName(DL.SHEETS.KEGIATAN);
   const rows = rowsAsObjects_(sh);
   return rows.find(r => r.kegiatan_id === id) || null;
+}
+
+
+/* ---------------- DASHBOARD / SCHOOLS ---------------- */
+
+function bootstrap_(body, user) {
+  const activities = rowsAsObjects_(getSS_().getSheetByName(DL.SHEETS.KEGIATAN));
+  const documents = rowsAsObjects_(getSS_().getSheetByName(DL.SHEETS.DOKUMENTASI));
+  const schools = rowsAsObjects_(getSS_().getSheetByName(DL.SHEETS.SEKOLAH));
+  return {
+    ok: true,
+    version: DL.VERSION,
+    user: { username: user.username },
+    stats: { kegiatan: activities.length, dokumentasi: documents.length, sekolah: schools.length },
+    activities: activities,
+    documents: documents,
+    schools: schools
+  };
+}
+
+function listSchools_(body, user) {
+  const sh = getSS_().getSheetByName(DL.SHEETS.SEKOLAH);
+  if (!sh) throw new Error('SHEET_SEKOLAH_NOT_FOUND');
+  return { ok: true, schools: rowsAsObjects_(sh) };
+}
+
+function createSchool_(body, user) {
+  const name = String(body.nama_sekolah || '').trim();
+  if (!name) throw new Error('NAMA_SEKOLAH_REQUIRED');
+  const sh = getSS_().getSheetByName(DL.SHEETS.SEKOLAH);
+  const id = 'SCH-' + Utilities.getUuid().slice(0,8).toUpperCase();
+  sh.appendRow([id,name,body.kecamatan||'',body.alamat||'',body.latitude||'',body.longitude||'',body.catatan||'']);
+  log_('CREATE_SCHOOL','', '', user.username+' | '+name);
+  return { ok:true, school: schoolById_(id) };
+}
+
+function updateSchool_(body, user) {
+  const id=String(body.sekolah_id||'').trim();
+  if(!id) throw new Error('SEKOLAH_ID_REQUIRED');
+  const row=findRowById_(DL.SHEETS.SEKOLAH,id);
+  if(!row) throw new Error('SCHOOL_NOT_FOUND');
+  const sh=getSS_().getSheetByName(DL.SHEETS.SEKOLAH);
+  sh.getRange(row,1,1,7).setValues([[id,body.nama_sekolah||'',body.kecamatan||'',body.alamat||'',body.latitude||'',body.longitude||'',body.catatan||'']]);
+  log_('UPDATE_SCHOOL','', '', user.username+' | '+id);
+  return {ok:true,school:schoolById_(id)};
+}
+
+function deleteSchool_(body,user){
+  const id=String(body.sekolah_id||'').trim();
+  if(!id)throw new Error('SEKOLAH_ID_REQUIRED');
+  const used=findActivityBySchool_(id);
+  if(used)throw new Error('SCHOOL_IN_USE');
+  const row=findRowById_(DL.SHEETS.SEKOLAH,id);
+  if(!row)throw new Error('SCHOOL_NOT_FOUND');
+  getSS_().getSheetByName(DL.SHEETS.SEKOLAH).deleteRow(row);
+  log_('DELETE_SCHOOL','', '', user.username+' | '+id);
+  return {ok:true,sekolah_id:id};
+}
+
+function schoolById_(id){
+  const rows=rowsAsObjects_(getSS_().getSheetByName(DL.SHEETS.SEKOLAH));
+  return rows.find(r=>r.sekolah_id===id)||null;
+}
+function findActivityBySchool_(id){
+  const rows=rowsAsObjects_(getSS_().getSheetByName(DL.SHEETS.KEGIATAN));
+  return rows.some(r=>r.sekolah_id===id);
 }
 
 /* ---------------- UPLOAD ---------------- */

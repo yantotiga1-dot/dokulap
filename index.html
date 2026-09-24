@@ -16,19 +16,19 @@
     <button class="btn btn-primary" type="submit">Masuk</button>
   </form>
   <div id="loginStatus" class="muted" style="margin-top:14px"></div>
-  <div style="margin-top:20px;font-size:12px" class="muted">DokuLap Backend v1 • Google Apps Script + Drive + Sheets</div>
+  <div style="margin-top:20px;font-size:12px" class="muted">DokuLap v2 • Google Apps Script + Drive + Sheets</div>
 </main>
 <script src="assets/js/api.js"></script>
 <script>
 document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const status=document.getElementById('loginStatus');
-  status.textContent='Menghubungkan ke backend...';
+  status.textContent='Menghubungkan ke backend...'; e.submitter.disabled=true; e.submitter.textContent='Memproses...';
   try{
     await DokuAPI.login(document.getElementById('username').value,document.getElementById('password').value);
     status.textContent='Login berhasil. Membuka dashboard...';
     location.href='dashboard.html';
-  }catch(err){ status.textContent='Login gagal: '+err.message; }
+  }catch(err){ status.textContent='Login gagal: '+err.message; e.submitter.disabled=false; e.submitter.textContent='Masuk'; }
 });
 </script>
 </body>
