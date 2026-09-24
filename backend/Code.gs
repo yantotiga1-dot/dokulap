@@ -36,18 +36,23 @@ function doPost(e) {
   try {
     const body = parseBody_(e);
     const action = String(body.action || '').trim();
+    let result;
 
-    if (action === 'login') return login_(body);
-    if (action === 'bootstrap') return protectedAction_(body, bootstrap_);
-    if (action === 'createActivity') return protectedAction_(body, createActivity_);
-    if (action === 'completeActivity') return protectedAction_(body, completeActivity_);
-    if (action === 'listActivities') return protectedAction_(body, listActivities_);
-    if (action === 'listDocuments') return protectedAction_(body, listDocuments_);
-    if (action === 'uploadFile') return protectedAction_(body, uploadFile_);
-    if (action === 'deleteDocument') return protectedAction_(body, deleteDocument_);
-    if (action === 'health') return json_({ ok: true, app: DL.APP, version: DL.VERSION });
+    if (action === 'login') result = login_(body);
+    else if (action === 'bootstrap') result = protectedAction_(body, bootstrap_);
+    else if (action === 'createActivity') result = protectedAction_(body, createActivity_);
+    else if (action === 'completeActivity') result = protectedAction_(body, completeActivity_);
+    else if (action === 'listActivities') result = protectedAction_(body, listActivities_);
+    else if (action === 'listDocuments') result = protectedAction_(body, listDocuments_);
+    else if (action === 'uploadFile') result = protectedAction_(body, uploadFile_);
+    else if (action === 'deleteDocument') result = protectedAction_(body, deleteDocument_);
+    else if (action === 'health') result = { ok: true, app: DL.APP, version: DL.VERSION };
+    else result = { ok: false, error: 'UNKNOWN_ACTION', message: 'Action tidak dikenali.' };
 
-    return json_({ ok: false, error: 'UNKNOWN_ACTION', message: 'Action tidak dikenali.' });
+    // A web-app doPost must return TextOutput/HtmlOutput.
+    // Protected action handlers return plain objects, so serialize them here.
+    if (result && typeof result.getContent === 'function') return result;
+    return json_(result);
   } catch (err) {
     console.error(err && err.stack ? err.stack : err);
     return json_({ ok: false, error: 'SERVER_ERROR', message: String(err.message || err) });
@@ -187,7 +192,7 @@ function createActivity_(body, user) {
     body.tanggal_selesai || '', schoolId, body.lokasi || schoolName,
     body.deskripsi || '', 'Aktif', activityFolder.getId(), now, now
   ]);
-  log_('CREATE_ACTIVITY', id, '', user.email);
+  log_('CREATE_ACTIVITY', id, '', user.username);
 
   return { ok: true, activity: activityById_(id) };
 }
@@ -199,13 +204,16 @@ function completeActivity_(body, user) {
   const sh = getSS_().getSheetByName(DL.SHEETS.KEGIATAN);
   sh.getRange(row, 9).setValue('Selesai');
   sh.getRange(row, 12).setValue(new Date());
-  log_('COMPLETE_ACTIVITY', id, '', user.email);
+  log_('COMPLETE_ACTIVITY', id, '', user.username);
   return { ok: true, activity: activityById_(id) };
 }
 
 function listActivities_() {
   const sh = getSS_().getSheetByName(DL.SHEETS.KEGIATAN);
-  return { ok: true, activities: rowsAsObjects_(sh) };
+  if (!sh) throw new Error('SHEET_KEGIATAN_NOT_FOUND');
+  const activities = rowsAsObjects_(sh);
+  console.log('DokuLap listActivities: ' + activities.length + ' kegiatan');
+  return { ok: true, activities: activities };
 }
 
 function activityById_(id) {
@@ -249,7 +257,7 @@ function uploadFile_(body, user) {
     '', mime, bytes.length, body.keterangan || '', new Date(), 'Berhasil'
   ]);
 
-  log_('UPLOAD', activityId, id, user.email + ' | ' + file.getName());
+  log_('UPLOAD', activityId, id, user.username + ' | ' + file.getName());
 
   return {
     ok: true,
@@ -281,7 +289,7 @@ function deleteDocument_(body, user) {
   const fileId = String(vals[4] || '');
   if (fileId) DriveApp.getFileById(fileId).setTrashed(true);
   sh.getRange(row, 12).setValue('Dihapus');
-  log_('DELETE_DOCUMENT', String(vals[1]), id, user.email);
+  log_('DELETE_DOCUMENT', String(vals[1]), id, user.username);
   return { ok: true, dokumentasi_id: id, status: 'Dihapus' };
 }
 
@@ -325,11 +333,16 @@ function upsertSetting_(sh, key, value) {
 
 function rowsAsObjects_(sh) {
   if (!sh || sh.getLastRow() < 2) return [];
-  const data = sh.getDataRange().getValues();
-  const headers = data[0];
-  return data.slice(1).filter(r => r.some(v => v !== '')).map(r => {
+  // Use display values so the API always returns JSON-safe strings.
+  // This avoids serialization problems caused by Date/error/formula values
+  // in Google Sheets.
+  const data = sh.getDataRange().getDisplayValues();
+  const headers = data[0].map(h => String(h || '').trim());
+  return data.slice(1).filter(r => r.some(v => String(v || '').trim() !== '')).map(r => {
     const o = {};
-    headers.forEach((h,i) => o[h] = r[i] instanceof Date ? r[i].toISOString() : r[i]);
+    headers.forEach((h,i) => {
+      if (h) o[h] = String(r[i] == null ? '' : r[i]);
+    });
     return o;
   });
 }

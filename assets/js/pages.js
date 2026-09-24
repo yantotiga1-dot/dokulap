@@ -38,6 +38,13 @@ document.getElementById('app').innerHTML=A.layout('kegiatan',`
 
 let activeId=localStorage.getItem('dokulap-active-activity')||'';
 
+function renderActiveActivity_(active){
+  document.getElementById('activeStatus').textContent=active?'Aktif':'Belum ada';
+  document.getElementById('activeActivity').innerHTML=active?
+   `<div class="activity-title">${active.nama_kegiatan||'-'}</div><div class="activity-meta">🏫 ${active.lokasi||active.sekolah_id||'-'} · ${active.tanggal_mulai||'-'}</div><div class="muted">ID: ${active.kegiatan_id}</div><div class="form-row" style="margin-top:15px"><button class="btn btn-secondary" onclick="completeActiveActivity()">Selesaikan</button></div>`:
+   `<div class="muted">Belum ada kegiatan aktif. Buat kegiatan di atas.</div>`;
+}
+
 async function refresh(){
  try{
   const data=await DokuAPI.activities();
@@ -55,12 +62,10 @@ document.getElementById('saveActivity').onclick=async()=>{
  const btn=document.getElementById('saveActivity'); btn.disabled=true; btn.textContent='Menyimpan...';
  try{
   const r=await DokuAPI.createActivity({nama_kegiatan:document.getElementById('kNama').value,jenis_kegiatan:document.getElementById('kJenis').value,sekolah_nama:document.getElementById('kSekolah').value,tanggal_mulai:document.getElementById('kTanggal').value,lokasi:document.getElementById('kLokasi').value,deskripsi:document.getElementById('kDeskripsi').value});
-  activeId=r.activity.kegiatan_id; localStorage.setItem('dokulap-active-activity',activeId); DokuLap.showToast('Kegiatan aktif dibuat','success'); try{
-  await refresh();
-}catch(refreshError){
-  console.warn('Kegiatan berhasil dibuat, tetapi refresh daftar gagal:', refreshError);
-  DokuLap.showToast('Kegiatan sudah tersimpan. Daftar belum diperbarui otomatis. Muat ulang halaman jika perlu.','warning');
-}
+  activeId=r.activity.kegiatan_id;
+  localStorage.setItem('dokulap-active-activity',activeId);
+  renderActiveActivity_(r.activity);
+  DokuLap.showToast('Kegiatan berhasil disimpan dan aktif','success');
  }catch(e){DokuLap.showToast(e.message,'error')} finally{btn.disabled=false;btn.textContent='Simpan & Mulai Kegiatan';}
 };
 document.getElementById('uploadBtn').onclick=async()=>{
@@ -83,7 +88,13 @@ window.completeActiveActivity=async()=>{
  if(!activeId)return;
  try{await DokuAPI.completeActivity(activeId);localStorage.removeItem('dokulap-active-activity');DokuLap.showToast('Kegiatan selesai','success');refresh();}catch(e){DokuLap.showToast(e.message,'error')}
 };
-refresh();
+refresh().catch(e=>{
+  const localId=localStorage.getItem('dokulap-active-activity');
+  if(localId){
+    document.getElementById('activeStatus').textContent='Aktif';
+    document.getElementById('activeActivity').innerHTML='<div class="activity-title">Kegiatan aktif tersimpan</div><div class="muted">ID: '+localId+'</div><div class="muted" style="margin-top:8px">Daftar kegiatan belum dapat dimuat dari backend.</div>';
+  }
+});
 }
 function dokumentasi(){document.getElementById('app').innerHTML=A.layout('dokumentasi',`
 <div class="toolbar"><input placeholder="🔎 Cari nama file, kegiatan, sekolah..."><select><option>Semua jenis</option><option>Foto</option><option>Video</option><option>Dokumen</option></select><select><option>Semua sekolah</option>${MOCK.schools.map(x=>`<option>${x}</option>`).join('')}</select><button class="btn btn-primary" onclick="DokuComponents.openUpload()">+ Upload</button></div>
